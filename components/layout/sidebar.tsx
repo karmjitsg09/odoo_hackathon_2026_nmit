@@ -42,13 +42,13 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
     },
     {
       name: 'Attendance',
-      href: '/attendance',
+      href: currentRole === 'admin' ? '/admin/attendance' : '/employee/attendance',
       icon: Clock,
       roles: ['admin', 'employee'],
     },
     {
       name: 'Leave',
-      href: '/leave',
+      href: currentRole === 'admin' ? '/admin/leave' : '/employee/leave',
       icon: CalendarCheck,
       roles: ['admin', 'employee'],
     },
@@ -119,7 +119,11 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
           {navItems.map((item) => {
             const isAdminOnly = !item.roles.includes('employee');
             const isForbidden = currentRole === 'employee' && isAdminOnly;
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive =
+              pathname === item.href ||
+              pathname.startsWith(`${item.href}/`) ||
+              (item.name === 'Attendance' && pathname.includes('/attendance')) ||
+              (item.name === 'Leave' && pathname.includes('/leave'));
 
             if (isForbidden) return null;
 

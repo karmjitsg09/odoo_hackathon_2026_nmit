@@ -119,8 +119,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const clockIn = (notes?: string) => {
+    if (todayAttendance?.check_in) {
+      toast.error('You have already checked in for today.');
+      return;
+    }
+
     const now = new Date();
-    const isLate = now.getHours() >= 9 && now.getMinutes() > 15;
+    const isLate = now.getHours() > 9 || (now.getHours() === 9 && now.getMinutes() > 15);
     const statusTag = isLate ? 'late' : 'present';
 
     const newRecord: AttendanceRecord = {
@@ -140,14 +145,43 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     setAttendanceRecords((prev) => [newRecord, ...prev]);
     toast.success(`Successfully checked in! Status: ${statusTag.toUpperCase()}`);
+
+    // Persist to Supabase if available
+    try {
+      import('../services/attendance-service').then(({ attendanceService }) => {
+        attendanceService.clockIn({
+          userId: currentUser.id,
+          userName: currentUser.full_name,
+          userAvatar: currentUser.avatar_url,
+          userDepartment: currentUser.department,
+          notes: newRecord.notes,
+        });
+      });
+    } catch {
+      // Graceful fallback
+    }
   };
 
   const clockOut = () => {
-    if (!todayAttendance || !todayAttendance.check_in) return;
+    if (!todayAttendance || !todayAttendance.check_in) {
+      toast.error('You must check in first before checking out.');
+      return;
+    }
+
+    if (todayAttendance.check_out) {
+      toast.error('You have already checked out for today.');
+      return;
+    }
+
     const now = new Date();
     const checkInTime = new Date(todayAttendance.check_in);
     const diffMs = now.getTime() - checkInTime.getTime();
     const hours = Math.max(0.1, Number((diffMs / (1000 * 60 * 60)).toFixed(2)));
+
+    let finalStatus = todayAttendance.status;
+    if (hours < 4 && finalStatus === 'present') {
+      finalStatus = 'half_day';
+    }
 
     setAttendanceRecords((prev) =>
       prev.map((rec) =>
@@ -156,11 +190,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               ...rec,
               check_out: now.toISOString(),
               work_hours: hours,
+              status: finalStatus,
             }
           : rec
       )
     );
     toast.success(`Checked out! Work hours logged today: ${hours} hrs`);
+
+    // Persist to Supabase if available
+    try {
+      import('../services/attendance-service').then(({ attendanceService }) => {
+        attendanceService.clockOut({
+          ...todayAttendance,
+          check_out: now.toISOString(),
+          work_hours: hours,
+          status: finalStatus,
+        });
+      });
+    } catch {
+      // Graceful fallback
+    }
   };
 
   const addEmployee = (newEmpData: Omit<UserProfile, 'id' | 'created_at' | 'updated_at'>) => {
@@ -205,6 +254,39 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     total_days: number;
     reason: string;
   }) => {
+    if (!leaveData.start_date) {
+      toast.error('Start date is required.');
+      return;
+    }
+    if (!leaveData.end_date) {
+      toast.error('End date is required.');
+      return;
+    }
+    if (new Date(leaveData.end_date) < new Date(leaveData.start_date)) {
+      toast.error('End date cannot be earlier than start date.');
+      return;
+    }
+    if (!leaveData.reason || !leaveData.reason.trim()) {
+      toast.error('Please specify a reason for leave.');
+      return;
+    }
+
+    // Check for overlapping requests
+    const newStart = new Date(leaveData.start_date).getTime();
+    const newEnd = new Date(leaveData.end_date).getTime();
+    const hasOverlap = leaveRequests.some((req) => {
+      if (req.user_id !== currentUser.id) return false;
+      if (req.status === 'rejected') return false;
+      const reqStart = new Date(req.start_date).getTime();
+      const reqEnd = new Date(req.end_date).getTime();
+      return newStart <= reqEnd && newEnd >= reqStart;
+    });
+
+    if (hasOverlap) {
+      toast.error('You already have a pending or active leave request overlapping these dates.');
+      return;
+    }
+
     const newRequest: LeaveRequest = {
       id: `leave-${Date.now()}`,
       user_id: currentUser.id,
@@ -215,7 +297,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       start_date: leaveData.start_date,
       end_date: leaveData.end_date,
       total_days: leaveData.total_days,
-      reason: leaveData.reason,
+      reason: leaveData.reason.trim(),
       status: 'pending',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -241,11 +323,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
 
     toast.success('Leave request submitted to HR for approval!');
+
+    // Persist to Supabase if available
+    try {
+      import('../services/leave-service').then(({ leaveService }) => {
+        leaveService.applyForLeave({
+          userId: currentUser.id,
+          userName: currentUser.full_name,
+          userAvatar: currentUser.avatar_url,
+          userDepartment: currentUser.department,
+          leave_type: leaveData.leave_type,
+          start_date: leaveData.start_date,
+          end_date: leaveData.end_date,
+          total_days: leaveData.total_days,
+          reason: leaveData.reason,
+        });
+      });
+    } catch {
+      // Graceful fallback
+    }
   };
 
   const reviewLeaveRequest = (id: string, status: 'approved' | 'rejected', comment?: string) => {
     const targetReq = leaveRequests.find((r) => r.id === id);
     if (!targetReq) return;
+
+    const finalComment = comment?.trim() || (status === 'approved' ? 'Request Approved' : 'Request Declined');
 
     setLeaveRequests((prev) =>
       prev.map((req) =>
@@ -255,7 +358,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
               status,
               reviewed_by: currentUser.id,
               reviewed_by_name: currentUser.full_name,
-              review_comment: comment || (status === 'approved' ? 'Request Approved' : 'Request Declined'),
+              review_comment: finalComment,
               updated_at: new Date().toISOString(),
             }
           : req
@@ -287,7 +390,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         id: `notif-${Date.now()}`,
         user_id: targetReq.user_id,
         title: `Leave Request ${status.toUpperCase()}`,
-        message: `${currentUser.full_name} has ${status} your leave request for ${targetReq.start_date}.`,
+        message: `${currentUser.full_name} has ${status} your leave request for ${targetReq.start_date}. Comment: "${finalComment}"`,
         type: 'leave',
         is_read: false,
         created_at: new Date().toISOString(),
@@ -296,6 +399,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ]);
 
     toast.success(`Leave request ${status}`);
+
+    // Persist to Supabase if available
+    try {
+      import('../services/leave-service').then(({ leaveService }) => {
+        leaveService.reviewLeaveRequest(
+          targetReq,
+          currentUser.id,
+          currentUser.full_name,
+          status,
+          finalComment
+        );
+      });
+    } catch {
+      // Graceful fallback
+    }
   };
 
   const generatePayrollBatch = (month: string) => {
