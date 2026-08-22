@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useTransition, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Users,
   Clock,
@@ -14,9 +15,10 @@ import {
   Sparkles,
   CalendarDays,
   FileSpreadsheet,
-  DollarSign,
   AlertTriangle,
   CreditCard,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -34,27 +36,23 @@ import { createClient } from '@/lib/supabase/client';
 import {
   getAnalyticsSummary,
   getDepartmentDistribution,
-  getLeaveTypeDistribution,
   getAllAttendanceWithEmployees,
   getAllLeaveRequestsWithEmployees,
   getEmployees,
   reviewLeaveRequest,
   DepartmentStat,
-  LeaveTypeStat,
 } from '@/lib/database';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrency, formatDate, formatTime } from '@/lib/utils';
+import { formatDate, formatTime } from '@/lib/utils';
 import { toast } from 'sonner';
 import type { AnalyticsSummary, Attendance, LeaveRequest, Employee } from '@/types';
 
 type AttendanceWithEmp = Attendance & { employee?: Employee };
 type LeaveWithEmp = LeaveRequest & { employee?: Employee };
-
-const CHART_COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EC4899', '#3B82F6', '#8B5CF6'];
 
 export default function AdminDashboardPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -69,7 +67,6 @@ export default function AdminDashboardPage() {
   });
 
   const [deptStats, setDeptStats] = useState<DepartmentStat[]>([]);
-  const [leaveStats, setLeaveStats] = useState<LeaveTypeStat[]>([]);
   const [recentAttendance, setRecentAttendance] = useState<AttendanceWithEmp[]>([]);
   const [recentLeaves, setRecentLeaves] = useState<LeaveWithEmp[]>([]);
 
@@ -85,14 +82,12 @@ export default function AdminDashboardPage() {
       const [
         sumData,
         deptData,
-        leaveData,
         attData,
         leaveReqs,
         empList,
       ] = await Promise.all([
         getAnalyticsSummary(supabase),
         getDepartmentDistribution(supabase),
-        getLeaveTypeDistribution(supabase),
         getAllAttendanceWithEmployees(supabase, { date: today }),
         getAllLeaveRequestsWithEmployees(supabase),
         getEmployees(supabase),
@@ -119,17 +114,6 @@ export default function AdminDashboardPage() {
           { name: 'Design', count: 1, totalSalary: 105000 },
           { name: 'Human Resources', count: 1, totalSalary: 95000 },
           { name: 'Executive', count: 1, totalSalary: 125000 },
-        ]);
-      }
-
-      if (leaveData && leaveData.length > 0) {
-        setLeaveStats(leaveData);
-      } else {
-        setLeaveStats([
-          { type: 'Annual', count: 3 },
-          { type: 'Sick', count: 2 },
-          { type: 'Casual', count: 1 },
-          { type: 'Unpaid', count: 1 },
         ]);
       }
 
@@ -240,14 +224,12 @@ export default function AdminDashboardPage() {
         const [
           sumData,
           deptData,
-          leaveData,
           attData,
           leaveReqs,
           empList,
         ] = await Promise.all([
           getAnalyticsSummary(supabase),
           getDepartmentDistribution(supabase),
-          getLeaveTypeDistribution(supabase),
           getAllAttendanceWithEmployees(supabase, { date: today }),
           getAllLeaveRequestsWithEmployees(supabase),
           getEmployees(supabase),
@@ -275,17 +257,6 @@ export default function AdminDashboardPage() {
               { name: 'Design', count: 1, totalSalary: 105000 },
               { name: 'Human Resources', count: 1, totalSalary: 95000 },
               { name: 'Executive', count: 1, totalSalary: 125000 },
-            ]);
-          }
-
-          if (leaveData && leaveData.length > 0) {
-            setLeaveStats(leaveData);
-          } else {
-            setLeaveStats([
-              { type: 'Annual', count: 3 },
-              { type: 'Sick', count: 2 },
-              { type: 'Casual', count: 1 },
-              { type: 'Unpaid', count: 1 },
             ]);
           }
 
@@ -350,7 +321,6 @@ export default function AdminDashboardPage() {
         prev.map((r) => (r.id === leaveId ? { ...r, status } : r))
       );
 
-      // Refresh KPI counts
       setSummary((prev) => ({
         ...prev,
         pendingLeaves: Math.max(0, prev.pendingLeaves - 1),
@@ -360,343 +330,437 @@ export default function AdminDashboardPage() {
     });
   };
 
+  // Calculations for Attendance Overview
+  const totalStaff = summary.totalEmployees || 1;
+  const presentCount = summary.presentToday;
+  const leaveCount = summary.onLeaveToday;
+  const absentCount = Math.max(0, totalStaff - presentCount - leaveCount);
+  const halfDayCount = recentAttendance.filter((a) => a.status === 'half_day').length;
+
+  const attendanceRate = summary.attendanceRate || Math.round((presentCount / totalStaff) * 100);
+
+  const attendancePieData = [
+    { name: 'Present', count: presentCount, color: '#10B981' },
+    { name: 'On Leave', count: leaveCount, color: '#38BDF8' },
+    { name: 'Absent / Pending', count: absentCount, color: '#F43F5E' },
+    ...(halfDayCount > 0 ? [{ name: 'Half Day', count: halfDayCount, color: '#F59E0B' }] : []),
+  ];
+
+  const currentDateFormatted = new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
   return (
     <div className="space-y-6">
-      {/* Top Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-              HR & Operations Master Dashboard
-            </h1>
-            <Badge variant="primary" className="font-semibold">
-              Live Workforce Metrics
-            </Badge>
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Real-time organizational KPIs, live attendance monitoring, pending approvals queue, and payroll overview.
-          </p>
+      {/* 1. HERO SECTION WITH WORKPLACE IMAGE BACKGROUND */}
+      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-indigo-500/25 shadow-xl transition-all duration-300">
+        {/* Background Image Layer */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/images/office-hero.jpg"
+            alt="Modern workplace"
+            fill
+            priority
+            className="object-cover object-center transform scale-105 filter brightness-90 dark:brightness-75"
+          />
+          {/* Gradient Overlays for High-Contrast Readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-900/85 to-indigo-950/80 dark:from-slate-950/95 dark:via-slate-900/90 dark:to-indigo-950/85" />
+          <div className="absolute inset-0 bg-radial-at-t from-indigo-500/20 via-transparent to-transparent pointer-events-none" />
         </div>
 
-        <div className="flex items-center gap-2.5">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchDashboardData}
-            disabled={refreshing}
-            className="text-xs"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh Data
-          </Button>
+        {/* Hero Content */}
+        <div className="relative z-10 p-6 sm:p-8 lg:p-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold backdrop-blur-md">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Dayflow Executive Control Center</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
 
-          <Link href="/admin/employees">
+            <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white drop-shadow-md">
+              Good morning, Admin 👋
+            </h1>
+
+            <p className="text-sm sm:text-base text-slate-200 font-medium leading-relaxed drop-shadow">
+              Here&apos;s what&apos;s happening with your workforce today.
+            </p>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 pt-1">
+              <span className="flex items-center gap-1.5 font-medium">
+                <CalendarDays className="w-3.5 h-3.5 text-indigo-300" />
+                {currentDateFormatted}
+              </span>
+              <span>•</span>
+              <span className="flex items-center gap-1.5 font-medium text-emerald-300">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                {summary.presentToday} staff on active duty
+              </span>
+              {summary.pendingLeaves > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1.5 font-medium text-amber-300">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    {summary.pendingLeaves} leave requests waiting
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Hero Action Buttons */}
+          <div className="flex items-center gap-3 shrink-0">
             <Button
-              variant="primary"
+              variant="outline"
               size="sm"
-              className="text-xs font-semibold shadow-md shadow-indigo-500/25"
+              onClick={fetchDashboardData}
+              disabled={refreshing}
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md text-xs font-semibold transition-all"
             >
-              <Plus className="w-4 h-4" />
-              Add Employee
+              <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Syncing...' : 'Refresh Metrics'}
             </Button>
-          </Link>
+
+            <Link href="/admin/employees">
+              <Button
+                variant="primary"
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/40"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add Employee
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* KPI METRIC CARDS (REAL SUPABASE DATA) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        {/* Total Employees */}
-        <Card className="p-5 bg-white/60 dark:bg-slate-900/60 hover:border-indigo-500/30 transition-all">
+      {/* 2. FOUR PROMINENT KPI STATISTIC CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Total Employees */}
+        <Card className="p-5 relative overflow-hidden bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 hover:shadow-lg transition-all duration-200 group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Total Employees
             </span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-              <Users className="w-4 h-4" />
+            <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+              <Users className="w-5 h-5" />
             </div>
           </div>
+
           <div className="mt-3">
             {loading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-9 w-20" />
             ) : (
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                   {summary.totalEmployees}
                 </span>
-                <span className="text-xs text-slate-400">active staff</span>
+                <span className="text-xs font-semibold text-slate-400">staff members</span>
               </div>
             )}
-            <Link
-              href="/admin/employees"
-              className="inline-flex items-center gap-1 text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline mt-2 font-medium"
-            >
-              Manage directory <ArrowRight className="w-3 h-3" />
-            </Link>
+
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Active in directory
+              </span>
+              <Link
+                href="/admin/employees"
+                className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold inline-flex items-center gap-1"
+              >
+                Directory <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         </Card>
 
-        {/* Present Today */}
-        <Card className="p-5 bg-white/60 dark:bg-slate-900/60 hover:border-emerald-500/30 transition-all">
+        {/* Card 2: Present Today */}
+        <Card className="p-5 relative overflow-hidden bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/50 hover:shadow-lg transition-all duration-200 group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
               Present Today
             </span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+              <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
+
           <div className="mt-3">
             {loading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-9 w-20" />
             ) : (
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
+                <span className="text-3xl sm:text-4xl font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
                   {summary.presentToday}
                 </span>
-                <span className="text-xs font-medium text-emerald-500">
-                  ({summary.attendanceRate}%)
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                  {attendanceRate}% turnout
                 </span>
               </div>
             )}
-            <Link
-              href="/admin/attendance"
-              className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline mt-2 font-medium"
-            >
-              View attendance <ArrowRight className="w-3 h-3" />
-            </Link>
+
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Punctual & verified
+              </span>
+              <Link
+                href="/admin/attendance"
+                className="text-emerald-600 dark:text-emerald-400 hover:underline font-semibold inline-flex items-center gap-1"
+              >
+                Live Log <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         </Card>
 
-        {/* Employees on Leave Today */}
-        <Card className="p-5 bg-white/60 dark:bg-slate-900/60 hover:border-sky-500/30 transition-all">
+        {/* Card 3: On Leave */}
+        <Card className="p-5 relative overflow-hidden bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 hover:shadow-lg transition-all duration-200 group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-              On Leave Today
+            <span className="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">
+              On Leave
             </span>
-            <div className="p-2 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400">
-              <CalendarDays className="w-4 h-4" />
+            <div className="p-2.5 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 group-hover:scale-110 transition-transform">
+              <CalendarDays className="w-5 h-5" />
             </div>
           </div>
+
           <div className="mt-3">
             {loading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-9 w-20" />
             ) : (
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-sky-600 dark:text-sky-400">
+                <span className="text-3xl sm:text-4xl font-extrabold text-sky-600 dark:text-sky-400 tracking-tight">
                   {summary.onLeaveToday}
                 </span>
-                <span className="text-xs text-slate-400">approved</span>
+                <span className="text-xs font-semibold text-slate-400">approved today</span>
               </div>
             )}
-            <Link
-              href="/admin/leave"
-              className="inline-flex items-center gap-1 text-[11px] text-sky-600 dark:text-sky-400 hover:underline mt-2 font-medium"
-            >
-              Leave schedule <ArrowRight className="w-3 h-3" />
-            </Link>
+
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Scheduled time-off
+              </span>
+              <Link
+                href="/admin/leave"
+                className="text-sky-600 dark:text-sky-400 hover:underline font-semibold inline-flex items-center gap-1"
+              >
+                Schedule <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         </Card>
 
-        {/* Pending Leave Requests */}
-        <Card className="p-5 bg-white/60 dark:bg-slate-900/60 hover:border-amber-500/30 transition-all">
+        {/* Card 4: Pending Leave Requests */}
+        <Card className="p-5 relative overflow-hidden bg-white dark:bg-slate-900/90 border-slate-200/80 dark:border-slate-800 hover:border-amber-500/50 hover:shadow-lg transition-all duration-200 group">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-              Pending Approvals
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+              Pending Leave Requests
             </span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-              <AlertTriangle className="w-4 h-4" />
+            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+              <AlertTriangle className="w-5 h-5" />
             </div>
           </div>
+
           <div className="mt-3">
             {loading ? (
-              <Skeleton className="h-8 w-16" />
+              <Skeleton className="h-9 w-20" />
             ) : (
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">
+                <span className="text-3xl sm:text-4xl font-extrabold text-amber-600 dark:text-amber-400 tracking-tight">
                   {summary.pendingLeaves}
                 </span>
-                <span className="text-xs text-amber-500 font-medium">urgent</span>
-              </div>
-            )}
-            <Link
-              href="/admin/leave"
-              className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 hover:underline mt-2 font-medium"
-            >
-              Review queue <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        </Card>
-
-        {/* Total Monthly Payroll */}
-        <Card className="p-5 bg-white/60 dark:bg-slate-900/60 col-span-2 sm:col-span-1 hover:border-purple-500/30 transition-all">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-              Payroll Outflow
-            </span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3">
-            {loading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-extrabold text-slate-900 dark:text-white font-mono">
-                  {formatCurrency(summary.totalMonthlyPayroll)}
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                  Requires HR action
                 </span>
               </div>
             )}
-            <Link
-              href="/admin/payroll"
-              className="inline-flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 hover:underline mt-2 font-medium"
-            >
-              Manage payroll <ArrowRight className="w-3 h-3" />
-            </Link>
+
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                Approval queue
+              </span>
+              <Link
+                href="/admin/leave"
+                className="text-amber-600 dark:text-amber-400 hover:underline font-semibold inline-flex items-center gap-1"
+              >
+                Review Now <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         </Card>
       </div>
 
-      {/* QUICK ACTIONS BAR */}
-      <Card className="p-4 bg-gradient-to-r from-indigo-500/5 via-purple-500/5 to-transparent border-indigo-500/20">
+      {/* 3. COMPACT QUICK ACTIONS AREA */}
+      <Card className="p-4 bg-slate-50 dark:bg-slate-900/70 border-slate-200 dark:border-slate-800 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
             <Sparkles className="w-4 h-4 text-indigo-500" />
-            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-              Admin Quick Actions
-            </span>
+            <span>Operational Quick Actions</span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/admin/employees">
-              <Button variant="secondary" size="sm" className="text-xs">
-                <Users className="w-3.5 h-3.5" />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+              >
+                <Users className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
                 Employees
               </Button>
             </Link>
 
             <Link href="/admin/attendance">
-              <Button variant="secondary" size="sm" className="text-xs">
-                <Clock className="w-3.5 h-3.5" />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+              >
+                <Clock className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
                 Attendance Logs
               </Button>
             </Link>
 
             <Link href="/admin/leave">
-              <Button variant="secondary" size="sm" className="text-xs">
-                <CalendarCheck className="w-3.5 h-3.5" />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+              >
+                <CalendarCheck className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
                 Leave Approvals
               </Button>
             </Link>
 
             <Link href="/admin/payroll">
-              <Button variant="secondary" size="sm" className="text-xs">
-                <CreditCard className="w-3.5 h-3.5" />
-                Run Payroll
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+              >
+                <CreditCard className="w-3.5 h-3.5 mr-1.5 text-purple-500" />
+                Payroll
               </Button>
             </Link>
 
             <Link href="/admin/reports">
-              <Button variant="secondary" size="sm" className="text-xs">
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                Reports & Export
+              <Button
+                variant="secondary"
+                size="sm"
+                className="text-xs font-semibold bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-sky-500" />
+                Reports & Analytics
               </Button>
             </Link>
           </div>
         </div>
       </Card>
 
-      {/* ANALYTICS VISUALS GRID (RECHARTS) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Department Workforce Distribution */}
-        <Card className="p-6 space-y-4">
+      {/* 4. ATTENDANCE OVERVIEW SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Attendance Breakdown & Status Chart */}
+        <Card className="lg:col-span-1 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Workforce by Department</CardTitle>
-              <CardDescription className="text-xs">
-                Staff distribution and team capacity
-              </CardDescription>
+              <CardTitle className="text-base font-bold">Attendance Overview</CardTitle>
+              <CardDescription className="text-xs">Today&apos;s workforce presence breakdown</CardDescription>
             </div>
-            <Badge variant="outline" className="text-xs">
-              {deptStats.length} Departments
+            <Badge variant="success" className="text-[10px]">
+              {attendanceRate}% Present
             </Badge>
           </div>
 
-          <div className="h-64 w-full pt-2">
-            {loading ? (
-              <Skeleton className="h-full w-full" />
-            ) : deptStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={deptStats} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11, fill: '#888888' }}
-                    interval={0}
-                    angle={-15}
-                    textAnchor="end"
-                  />
-                  <YAxis tick={{ fontSize: 11, fill: '#888888' }} allowDecimals={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '12px',
-                      fontSize: '12px',
-                      color: '#fff',
-                    }}
-                  />
-                  <Bar dataKey="count" name="Employees" fill="#6366F1" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                No department records available.
+          {/* Clean Segmented Progress Bar */}
+          <div className="space-y-2 pt-2">
+            <div className="w-full bg-slate-100 dark:bg-slate-800 h-3 rounded-full flex overflow-hidden">
+              <div
+                className="bg-emerald-500 h-full transition-all duration-500"
+                style={{ width: `${(presentCount / totalStaff) * 100}%` }}
+                title={`Present: ${presentCount}`}
+              />
+              <div
+                className="bg-sky-400 h-full transition-all duration-500"
+                style={{ width: `${(leaveCount / totalStaff) * 100}%` }}
+                title={`On Leave: ${leaveCount}`}
+              />
+              <div
+                className="bg-rose-500 h-full transition-all duration-500"
+                style={{ width: `${(absentCount / totalStaff) * 100}%` }}
+                title={`Absent: ${absentCount}`}
+              />
+            </div>
+
+            {/* Attendance Status Metric Tiles */}
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-left">
+                <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Present</span>
+                </div>
+                <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300 mt-1">
+                  {presentCount}
+                </p>
+                <span className="text-[10px] text-slate-400">On duty today</span>
               </div>
-            )}
-          </div>
-        </Card>
 
-        {/* Leave Type Distribution Chart */}
-        <Card className="p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Leave Distribution</CardTitle>
-              <CardDescription className="text-xs">
-                Leave requests classified by leave type category
-              </CardDescription>
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-left">
+                <div className="flex items-center gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-semibold">
+                  <UserX className="w-3.5 h-3.5" />
+                  <span>Absent</span>
+                </div>
+                <p className="text-xl font-extrabold text-rose-700 dark:text-rose-300 mt-1">
+                  {absentCount}
+                </p>
+                <span className="text-[10px] text-slate-400">Not checked in</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-left">
+                <div className="flex items-center gap-1.5 text-xs text-sky-600 dark:text-sky-400 font-semibold">
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <span>On Leave</span>
+                </div>
+                <p className="text-xl font-extrabold text-sky-700 dark:text-sky-300 mt-1">
+                  {leaveCount}
+                </p>
+                <span className="text-[10px] text-slate-400">Approved leave</span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-left">
+                <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Half-Day</span>
+                </div>
+                <p className="text-xl font-extrabold text-amber-700 dark:text-amber-300 mt-1">
+                  {halfDayCount}
+                </p>
+                <span className="text-[10px] text-slate-400">&lt; 4 hrs shift</span>
+              </div>
             </div>
-            <Badge variant="outline" className="text-xs">
-              Categories
-            </Badge>
-          </div>
 
-          <div className="h-64 w-full pt-2 flex items-center justify-center">
-            {loading ? (
-              <Skeleton className="h-full w-full" />
-            ) : leaveStats.length > 0 ? (
+            {/* Donut Visualization */}
+            <div className="h-36 w-full pt-2 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={leaveStats}
+                    data={attendancePieData}
                     dataKey="count"
-                    nameKey="type"
+                    nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={80}
-                    paddingAngle={4}
+                    innerRadius={36}
+                    outerRadius={56}
+                    paddingAngle={3}
                   >
-                    {leaveStats.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={CHART_COLORS[index % CHART_COLORS.length]}
-                      />
+                    {attendancePieData.map((entry, index) => (
+                      <Cell key={`att-cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                      backgroundColor: 'rgba(15, 23, 42, 0.95)',
                       border: '1px solid rgba(255, 255, 255, 0.1)',
                       borderRadius: '12px',
                       fontSize: '12px',
@@ -705,77 +769,167 @@ export default function AdminDashboardPage() {
                   />
                 </PieChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-xs text-slate-400">
-                No leave records to visualize.
-              </div>
-            )}
+            </div>
           </div>
+        </Card>
+
+        {/* Live Attendance Activity Log Stream */}
+        <Card className="lg:col-span-2 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-bold">Today’s Live Check-Ins</CardTitle>
+              <CardDescription className="text-xs">
+                Real-time employee clock-in activity & punctuality status
+              </CardDescription>
+            </div>
+            <Link
+              href="/admin/attendance"
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold inline-flex items-center gap-1"
+            >
+              Full Attendance Log <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
+          {recentAttendance.length === 0 ? (
+            <div className="py-12 text-center text-xs text-slate-400">
+              No clock-in records logged for today yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentAttendance.map((rec) => (
+                <div
+                  key={rec.id}
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <Avatar
+                      src={rec.employee?.profile_image || undefined}
+                      name={rec.employee?.full_name || 'Staff Member'}
+                      size="md"
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {rec.employee?.full_name}
+                      </p>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {rec.employee?.designation || rec.employee?.department || 'Employee'} • {rec.employee?.employee_id || 'Staff'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right">
+                      <p className="text-xs font-mono font-bold text-slate-900 dark:text-white">
+                        {formatTime(rec.check_in)}
+                      </p>
+                      <p className="text-[10px] text-slate-400">
+                        {rec.check_out ? `Out: ${formatTime(rec.check_out)}` : 'Active on shift'}
+                      </p>
+                    </div>
+
+                    <Badge
+                      variant={
+                        rec.status === 'present'
+                          ? 'success'
+                          : rec.status === 'late'
+                          ? 'warning'
+                          : 'info'
+                      }
+                      className="capitalize text-[10px] font-semibold"
+                    >
+                      {rec.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
 
-      {/* OPERATIONS & RECENT ACTIVITY FEEDS */}
+      {/* 5. LEAVE REQUESTS PANEL & 6. WORKFORCE OVERVIEW */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Pending Leave Approvals Stream */}
+        {/* Leave Requests Panel */}
         <Card className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Pending Leave Requests</CardTitle>
+              <CardTitle className="text-base font-bold">Leave Requests Panel</CardTitle>
               <CardDescription className="text-xs">
-                Awaiting administrative approval
+                Employee time-off submissions & status review
               </CardDescription>
             </div>
             <Link
               href="/admin/leave"
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold inline-flex items-center gap-1"
             >
-              View All
+              Open Leave Approvals <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           {recentLeaves.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-400">
-              No leave requests currently pending.
+            <div className="py-12 text-center text-xs text-slate-400">
+              No leave requests currently in queue.
             </div>
           ) : (
             <div className="space-y-3">
               {recentLeaves.map((req) => (
                 <div
                   key={req.id}
-                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-3"
+                  className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={req.employee?.full_name || 'Staff'} size="sm" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <Avatar
+                      src={req.employee?.profile_image || undefined}
+                      name={req.employee?.full_name || 'Employee'}
+                      size="md"
+                    />
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                        {req.employee?.full_name}
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {req.leave_type.toUpperCase()} • {formatDate(req.start_date)}
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                          {req.employee?.full_name}
+                        </p>
+                        <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                          {req.leave_type}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {formatDate(req.start_date)} to {formatDate(req.end_date)} • {req.remarks ? `"${req.remarks}"` : 'Time-off request'}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     {req.status === 'pending' ? (
-                      <>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="warning" className="text-[10px] capitalize">
+                          Pending
+                        </Badge>
                         <button
                           onClick={() => handleQuickApproveLeave(req.id, 'approved')}
-                          className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-xs font-medium transition-colors"
+                          className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-xs font-semibold transition-colors cursor-pointer"
                           title="Approve"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleQuickApproveLeave(req.id, 'rejected')}
-                          className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 text-xs font-medium transition-colors"
-                          title="Decline"
+                          className="p-1.5 rounded-xl bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 text-xs font-semibold transition-colors cursor-pointer"
+                          title="Reject"
                         >
                           <XCircle className="w-4 h-4" />
                         </button>
-                      </>
+                      </div>
                     ) : (
-                      <Badge variant={req.status === 'approved' ? 'success' : 'danger'}>
+                      <Badge
+                        variant={
+                          req.status === 'approved'
+                            ? 'success'
+                            : req.status === 'rejected'
+                            ? 'danger'
+                            : 'warning'
+                        }
+                        className="text-[10px] capitalize font-semibold"
+                      >
                         {req.status}
                       </Badge>
                     )}
@@ -786,61 +940,76 @@ export default function AdminDashboardPage() {
           )}
         </Card>
 
-        {/* Live Attendance Activity Stream */}
+        {/* Workforce Overview by Department */}
         <Card className="p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base">Today’s Attendance Activity</CardTitle>
+              <CardTitle className="text-base font-bold">Workforce Overview</CardTitle>
               <CardDescription className="text-xs">
-                Recent employee check-in timestamps
+                Department headcount distribution & active staff
               </CardDescription>
             </div>
-            <Link
-              href="/admin/attendance"
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
-            >
-              View Log
-            </Link>
+            <Badge variant="outline" className="text-xs font-semibold">
+              {deptStats.length} Departments
+            </Badge>
           </div>
 
-          {recentAttendance.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-400">
-              No clock-ins recorded for today yet.
+          <div className="space-y-4 pt-1">
+            {/* Department Headcount Bar Chart */}
+            <div className="h-48 w-full">
+              {loading ? (
+                <Skeleton className="h-full w-full" />
+              ) : deptStats.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={deptStats} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.12} />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 11, fill: '#888888' }}
+                      interval={0}
+                      angle={-10}
+                      textAnchor="end"
+                    />
+                    <YAxis tick={{ fontSize: 11, fill: '#888888' }} allowDecimals={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        color: '#fff',
+                      }}
+                    />
+                    <Bar dataKey="count" name="Staff Count" fill="#6366F1" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                  No department records available.
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentAttendance.map((rec) => (
-                <div
-                  key={rec.id}
-                  className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={rec.employee?.full_name || 'Staff'} size="sm" />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                        {rec.employee?.full_name}
-                      </p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        {rec.employee?.department || 'General'}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right">
-                      <p className="text-xs font-mono font-semibold text-slate-900 dark:text-white">
-                        {formatTime(rec.check_in)}
-                      </p>
-                      <p className="text-[10px] text-slate-400">Check In</p>
-                    </div>
-                    <Badge variant={rec.status === 'present' ? 'success' : 'warning'}>
-                      {rec.status === 'present' ? 'Punctual' : 'Late'}
-                    </Badge>
+            {/* Department Capacity Badges */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+              {deptStats.map((dept) => (
+                <div
+                  key={dept.name}
+                  className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between"
+                >
+                  <div className="min-w-0 pr-1">
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                      {dept.name}
+                    </p>
+                    <span className="text-[10px] text-slate-400">Department</span>
                   </div>
+                  <span className="text-xs font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-md">
+                    {dept.count}
+                  </span>
                 </div>
               ))}
             </div>
-          )}
+          </div>
         </Card>
       </div>
     </div>
