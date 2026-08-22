@@ -90,12 +90,11 @@ export const leaveService = {
     try {
       const supabase = createClient();
       await supabase.from('leave_requests').insert({
-        user_id: payload.userId,
+        employee_id: payload.userId,
         leave_type: payload.leave_type,
         start_date: payload.start_date,
         end_date: payload.end_date,
-        total_days: payload.total_days,
-        reason: payload.reason.trim(),
+        remarks: payload.reason.trim(),
         status: 'pending',
       });
     } catch {
@@ -134,19 +133,18 @@ export const leaveService = {
         .from('leave_requests')
         .update({
           status,
-          reviewed_by: reviewerId,
-          review_comment: finalComment,
+          admin_comment: finalComment,
           updated_at: nowStr,
         })
         .eq('id', targetRequest.id);
 
       // Insert notification for employee
       await supabase.from('notifications').insert({
-        user_id: targetRequest.user_id,
+        employee_id: targetRequest.user_id,
         title: `Leave Request ${status.toUpperCase()}`,
         message: `${reviewerName} has ${status} your leave request for ${targetRequest.start_date} to ${targetRequest.end_date}. Comment: "${finalComment}"`,
         type: 'leave',
-        is_read: false,
+        read: false,
       });
     } catch {
       // Graceful fallback

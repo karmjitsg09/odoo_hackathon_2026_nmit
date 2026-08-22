@@ -42,21 +42,12 @@ export function Sidebar({ isOpen, setIsOpen, portal }: SidebarProps) {
     },
     {
       name: 'Attendance',
-<<<<<<< HEAD
-      href: currentRole === 'admin' ? '/admin/attendance' : '/employee/attendance',
-=======
       href: '/employee/attendance',
->>>>>>> cab571b (feat: create Dayflow foundation)
       icon: Clock,
     },
     {
-<<<<<<< HEAD
-      name: 'Leave',
-      href: currentRole === 'admin' ? '/admin/leave' : '/employee/leave',
-=======
       name: 'Leave Requests',
       href: '/employee/leave',
->>>>>>> cab571b (feat: create Dayflow foundation)
       icon: CalendarCheck,
     },
     {
@@ -167,19 +158,8 @@ export function Sidebar({ isOpen, setIsOpen, portal }: SidebarProps) {
             {isCurrentAdminPath ? 'Administration' : 'Employee Workspace'}
           </div>
 
-<<<<<<< HEAD
-          {navItems.map((item) => {
-            const isAdminOnly = !item.roles.includes('employee');
-            const isForbidden = currentRole === 'employee' && isAdminOnly;
-            const isActive =
-              pathname === item.href ||
-              pathname.startsWith(`${item.href}/`) ||
-              (item.name === 'Attendance' && pathname.includes('/attendance')) ||
-              (item.name === 'Leave' && pathname.includes('/leave'));
-=======
           {currentNavItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
->>>>>>> cab571b (feat: create Dayflow foundation)
 
             return (
               <Link

@@ -38,11 +38,10 @@ export const attendanceService = {
       const supabase = createClient();
       // Attempt Supabase insert
       await supabase.from('attendance').insert({
-        user_id: userId,
+        employee_id: userId,
         date: todayStr,
         check_in: record.check_in,
         status: record.status,
-        notes: record.notes,
       });
     } catch {
       // Graceful fallback for non-configured or offline Supabase
@@ -83,10 +82,9 @@ export const attendanceService = {
         .from('attendance')
         .update({
           check_out: updatedRecord.check_out,
-          work_hours: workHours,
           status: finalStatus,
         })
-        .eq('user_id', existingRecord.user_id)
+        .eq('employee_id', existingRecord.user_id)
         .eq('date', existingRecord.date);
     } catch {
       // Graceful fallback
