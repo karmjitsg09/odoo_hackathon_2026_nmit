@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Avatar } from '../ui/avatar';
 import { Badge } from '../ui/badge';
+import { useApp } from '@/lib/store/app-context';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, setIsOpen, portal }: SidebarProps) {
   const pathname = usePathname();
+  const { currentUser } = useApp();
   const isCurrentAdminPath = portal === 'admin' || pathname.startsWith('/admin');
 
   const employeeNavItems = [
@@ -188,13 +190,13 @@ export function Sidebar({ isOpen, setIsOpen, portal }: SidebarProps) {
         {/* User Card & Role Footnote */}
         <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-2">
           <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center gap-3">
-            <Avatar name={isCurrentAdminPath ? 'Admin User' : 'Sarah Connor'} size="md" />
+            <Avatar src={currentUser.avatar_url} name={currentUser.full_name} size="md" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                {isCurrentAdminPath ? 'Admin Workspace' : 'Sarah Connor'}
+                {isCurrentAdminPath ? (currentUser.role === 'admin' ? currentUser.full_name : 'Admin Workspace') : currentUser.full_name}
               </p>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                {isCurrentAdminPath ? 'admin@dayflow.hr' : 'EMP-003 • Engineering'}
+                {isCurrentAdminPath ? currentUser.email : `${currentUser.job_title} • ${currentUser.department}`}
               </p>
             </div>
           </div>
@@ -207,7 +209,7 @@ export function Sidebar({ isOpen, setIsOpen, portal }: SidebarProps) {
               Sign Up
             </Link>
             <span>•</span>
-            <Badge variant="outline" className="text-[10px]">Phase 1</Badge>
+            <Badge variant="outline" className="text-[10px]">Active</Badge>
           </div>
         </div>
       </aside>
