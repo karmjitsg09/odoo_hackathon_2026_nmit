@@ -7,10 +7,12 @@ import { Sparkles, ShieldCheck, UserCheck, ArrowRight, Lock, Mail } from 'lucide
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { useApp } from '@/lib/store/app-context';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setRole } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,15 +21,25 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
+    // Determine role from email for demo purposes
+    const isAdmin = email.toLowerCase().includes('admin') || email.toLowerCase() === 'admin@dayflow.hr';
     setTimeout(() => {
-      toast.success('Phase 1 Auth Placeholder: Redirecting to Employee Dashboard...');
+      if (isAdmin) {
+        setRole('admin');
+        toast.success('Welcome back, Admin! Redirecting to HR Portal...');
+        router.push('/admin/dashboard');
+      } else {
+        setRole('employee');
+        toast.success('Welcome back! Redirecting to Employee Dashboard...');
+        router.push('/employee/dashboard');
+      }
       setLoading(false);
-      router.push('/employee/dashboard');
     }, 500);
   };
 
   const handleQuickDemo = (role: 'admin' | 'employee') => {
-    toast.success(`Navigating to ${role === 'admin' ? 'Admin / HR' : 'Employee'} Portal...`);
+    setRole(role);
+    toast.success(`Entering ${role === 'admin' ? 'Admin / HR Officer' : 'Employee'} portal...`);
     router.push(role === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
   };
 
@@ -51,14 +63,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Quick Portal Switcher for Testing */}
+        {/* Quick Demo Access */}
         <Card className="bg-indigo-950/40 border-indigo-500/30 p-4 space-y-3">
           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-300">
             <Sparkles className="w-4 h-4 text-indigo-400" />
-            Phase 1 Quick Portal Navigation
+            Demo — Quick Portal Access
           </div>
           <p className="text-xs text-slate-300">
-            Explore the role-separated application shells:
+            Jump directly into either portal for the live demonstration:
           </p>
           <div className="grid grid-cols-2 gap-3 pt-1">
             <Button
@@ -67,9 +79,10 @@ export default function LoginPage() {
               size="sm"
               onClick={() => handleQuickDemo('admin')}
               className="bg-indigo-600 hover:bg-indigo-500 text-xs"
+              id="btn-demo-admin"
             >
               <ShieldCheck className="w-4 h-4" />
-              Admin Portal
+              Admin / HR Portal
             </Button>
             <Button
               type="button"
@@ -77,19 +90,30 @@ export default function LoginPage() {
               size="sm"
               onClick={() => handleQuickDemo('employee')}
               className="text-xs"
+              id="btn-demo-employee"
             >
               <UserCheck className="w-4 h-4" />
               Employee Portal
             </Button>
           </div>
+          <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-400 pt-1">
+            <div className="flex flex-col">
+              <span className="font-semibold text-slate-300">Admin demo credentials:</span>
+              <span>admin@dayflow.hr</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-semibold text-slate-300">Employee demo credentials:</span>
+              <span>alex.chen@dayflow.hr</span>
+            </div>
+          </div>
         </Card>
 
-        {/* Login Form Placeholder */}
+        {/* Login Form */}
         <Card className="bg-slate-900/90 border-slate-800 p-6 shadow-2xl backdrop-blur-xl">
           <CardHeader className="p-0 pb-4">
-            <CardTitle className="text-lg">Account Login</CardTitle>
+            <CardTitle className="text-lg">Sign In to Dayflow</CardTitle>
             <CardDescription className="text-xs">
-              Supabase Auth will be wired by the Auth Developer in Phase 2
+              Use your organizational email and password
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 space-y-4">
@@ -102,6 +126,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 leftIcon={<Mail className="w-4 h-4" />}
+                id="input-email"
               />
 
               <Input
@@ -112,6 +137,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 leftIcon={<Lock className="w-4 h-4" />}
+                id="input-password"
               />
 
               <Button
@@ -120,8 +146,9 @@ export default function LoginPage() {
                 size="lg"
                 className="w-full mt-2 font-semibold"
                 disabled={loading}
+                id="btn-signin"
               >
-                {loading ? 'Authenticating...' : 'Sign In'}
+                {loading ? 'Signing in...' : 'Sign In'}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </form>
