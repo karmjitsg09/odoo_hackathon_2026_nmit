@@ -14,6 +14,7 @@ import {
   UserCheck,
   User,
   ArrowLeftRight,
+  BarChart3,
 } from 'lucide-react';
 import { Avatar } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -90,6 +91,11 @@ export function Sidebar({ isOpen, setIsOpen, portal }: SidebarProps) {
       name: 'Payroll Management',
       href: '/admin/payroll',
       icon: CreditCard,
+    },
+    {
+      name: 'Reports & Analytics',
+      href: '/admin/reports',
+      icon: BarChart3,
     },
   ];
 
