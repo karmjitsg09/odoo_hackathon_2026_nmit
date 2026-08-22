@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  CreditCard,
   DollarSign,
   Calendar,
   Printer,
@@ -184,81 +183,137 @@ export default function EmployeePayrollPage() {
       {/* Main KPI Summary Cards */}
       {!loading && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Net Salary Card */}
-            <Card className="p-5 bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-transparent border-indigo-500/30">
+          {/* Premium Hero Section */}
+          <div 
+            className="relative rounded-3xl overflow-hidden bg-cover bg-center border border-indigo-500/30 text-white shadow-2xl p-6 sm:p-8 mb-6"
+            style={{ backgroundImage: `url('/finance_hero.jpg')` }}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-indigo-950/80 mix-blend-multiply" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <Badge variant="primary" className="bg-indigo-500/20 text-indigo-300 border-indigo-500/40 text-[10px] uppercase font-bold tracking-wider px-3 py-1">
+                  Active Compensation Plan
+                </Badge>
+                <h2 className="text-3xl font-extrabold tracking-tight">Financial Overview</h2>
+                <p className="text-sm text-slate-300 max-w-md">
+                  Your payroll profile for the current cycle is active and disbursements are verified by HR.
+                </p>
+              </div>
+              <div className="flex flex-col items-start md:items-end gap-1">
+                <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">
+                  NET DISBURSED INCOME
+                </span>
+                <span className="text-4xl sm:text-5xl font-black tracking-tight text-white font-mono bg-gradient-to-r from-white via-indigo-100 to-indigo-200 bg-clip-text text-transparent drop-shadow-md">
+                  {formatCurrency(latestPayroll.net_salary)}
+                </span>
+                <span className="text-[11px] text-slate-400 font-medium">
+                  Effective cycle: {formatDate(latestPayroll.effective_date)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main KPI Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Gross Salary Card */}
+            <Card className="p-6 bg-slate-950/60 border-slate-800 flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                  Gross Salary
+                </span>
+                <div className="p-2 rounded-xl bg-slate-800 text-slate-300">
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <span className="text-2xl font-bold font-mono text-slate-100">
+                  {formatCurrency(latestPayroll.basic_salary + latestPayroll.allowances)}
+                </span>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  Basic ({formatCurrency(latestPayroll.basic_salary)}) + Allowances ({formatCurrency(latestPayroll.allowances)})
+                </div>
+              </div>
+            </Card>
+
+            {/* Total Deductions Card */}
+            <Card className="p-6 bg-slate-950/60 border-slate-800 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider">
+                  Total Deductions
+                </span>
+                <div className="p-2 rounded-xl bg-slate-800 text-slate-300">
+                  <TrendingUp className="w-4 h-4 rotate-180 text-rose-400" />
+                </div>
+              </div>
+              <div className="mt-4">
+                <span className="text-2xl font-bold font-mono text-rose-400">
+                  -{formatCurrency(latestPayroll.deductions)}
+                </span>
+                <div className="text-[11px] text-slate-500 mt-1">
+                  Statutory withholdings & taxes
+                </div>
+              </div>
+            </Card>
+
+            {/* Net Take-Home Pay (visually prominent) */}
+            <Card className="p-6 bg-gradient-to-tr from-indigo-900/40 via-indigo-950/30 to-slate-900/90 border-indigo-500/30 flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute right-0 bottom-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
                   Net Take-Home Pay
                 </span>
-                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-600 dark:text-indigo-400">
+                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300">
                   <DollarSign className="w-4 h-4" />
                 </div>
               </div>
-              <div className="mt-3">
-                <span className="text-3xl font-black text-slate-900 dark:text-white font-mono">
+              <div className="mt-4">
+                <span className="text-3xl font-black font-mono text-indigo-400">
                   {formatCurrency(latestPayroll.net_salary)}
                 </span>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Effective: {formatDate(latestPayroll.effective_date)}
+                <div className="text-[11px] text-indigo-200 mt-1">
+                  Disbursed net amount
                 </div>
-              </div>
-            </Card>
-
-            {/* Basic Salary Card */}
-            <Card className="p-5 bg-white/60 dark:bg-slate-900/60">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Basic Salary
-                </span>
-                <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  <CreditCard className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-bold text-slate-900 dark:text-white font-mono">
-                  {formatCurrency(latestPayroll.basic_salary)}
-                </span>
-                <div className="text-xs text-slate-500 mt-1">Base monthly rate</div>
-              </div>
-            </Card>
-
-            {/* Allowances Card */}
-            <Card className="p-5 bg-white/60 dark:bg-slate-900/60">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-                  Total Allowances
-                </span>
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <TrendingUp className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                  +{formatCurrency(latestPayroll.allowances)}
-                </span>
-                <div className="text-xs text-emerald-500/80 mt-1">Perks, medical & travel</div>
-              </div>
-            </Card>
-
-            {/* Deductions Card */}
-            <Card className="p-5 bg-white/60 dark:bg-slate-900/60">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
-                  Total Deductions
-                </span>
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                  <TrendingUp className="w-4 h-4 rotate-180" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <span className="text-2xl font-bold text-rose-600 dark:text-rose-400 font-mono">
-                  -{formatCurrency(latestPayroll.deductions)}
-                </span>
-                <div className="text-xs text-rose-400/80 mt-1">Statutory & income tax</div>
               </div>
             </Card>
           </div>
+
+          {/* Salary Itemized Breakdown */}
+          <Card className="p-6 border-slate-800 bg-slate-950/40 space-y-4 mb-6">
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Compensation Itemization
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-slate-800 text-xs">
+                  <span className="text-slate-400 font-medium">Basic Salary</span>
+                  <span className="font-mono font-semibold text-slate-200">
+                    {formatCurrency(latestPayroll.basic_salary)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-800 text-xs">
+                  <span className="text-slate-400 font-medium">Allowances</span>
+                  <span className="font-mono font-semibold text-emerald-400">
+                    +{formatCurrency(latestPayroll.allowances)}
+                  </span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b border-slate-800 text-xs">
+                  <span className="text-slate-400 font-medium">Deductions</span>
+                  <span className="font-mono font-semibold text-rose-400">
+                    -{formatCurrency(latestPayroll.deductions)}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-slate-800 text-xs bg-indigo-950/20 p-2 rounded-lg">
+                  <span className="text-indigo-300 font-bold">Net Salary</span>
+                  <span className="font-mono font-black text-indigo-400">
+                    {formatCurrency(latestPayroll.net_salary)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
 
           {/* Historical Payslips Table */}
           <Card className="p-6 space-y-4">

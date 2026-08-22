@@ -586,64 +586,99 @@ export default function AdminPayrollPage() {
         </div>
       </div>
 
+      {/* Premium Hero Section */}
+      {!loading && (
+        <div 
+          className="relative rounded-3xl overflow-hidden bg-cover bg-center border border-indigo-500/30 text-white shadow-2xl p-6 sm:p-8"
+          style={{ backgroundImage: `url('/finance_hero.jpg')` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900/90 to-indigo-950/80 mix-blend-multiply" />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <Badge variant="primary" className="bg-indigo-500/20 text-indigo-300 border-indigo-500/40 text-[10px] uppercase font-bold tracking-wider px-3 py-1">
+                Enterprise Payroll Console
+              </Badge>
+              <h2 className="text-3xl font-extrabold tracking-tight">Compensation Statistics</h2>
+              <p className="text-sm text-slate-300 max-w-md">
+                Active cycle tracking and salary disbursements across all operating departments.
+              </p>
+            </div>
+            <div className="flex flex-col items-start md:items-end gap-1">
+              <span className="text-xs font-semibold text-indigo-300 uppercase tracking-wider">
+                TOTAL NET OUTFLOW
+              </span>
+              <span className="text-4xl sm:text-5xl font-black tracking-tight text-white font-mono bg-gradient-to-r from-white via-indigo-100 to-indigo-200 bg-clip-text text-transparent drop-shadow-md">
+                {formatCurrency(financialStats.totalNet)}
+              </span>
+              <span className="text-[11px] text-slate-400 font-medium">
+                Tracking {financialStats.employeeCount} active profiles
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Financial KPIs Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-4 bg-white/60 dark:bg-slate-900/60">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Gross Salary Card */}
+        <Card className="p-6 bg-slate-950/60 border-slate-800 flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Total Net Outflow</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+              Gross Outflow
+            </span>
+            <div className="p-2 rounded-xl bg-slate-850 text-slate-300">
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-2xl font-bold font-mono text-slate-100">
+              {formatCurrency(financialStats.totalBasic + financialStats.totalAllowances)}
+            </span>
+            <div className="text-[11px] text-slate-500 mt-1">
+              Basic ({formatCurrency(financialStats.totalBasic)}) + Allowances ({formatCurrency(financialStats.totalAllowances)})
+            </div>
+          </div>
+        </Card>
+
+        {/* Total Deductions Card */}
+        <Card className="p-6 bg-slate-950/60 border-slate-800 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-rose-400 uppercase tracking-wider">
+              Total Deductions
+            </span>
+            <div className="p-2 rounded-xl bg-slate-850 text-slate-300">
+              <TrendingUp className="w-4 h-4 rotate-180 text-rose-400" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <span className="text-2xl font-bold font-mono text-rose-400">
+              -{formatCurrency(financialStats.totalDeductions)}
+            </span>
+            <div className="text-[11px] text-slate-500 mt-1">
+              Withholdings, taxes & corporate contributions
+            </div>
+          </div>
+        </Card>
+
+        {/* Net Take-Home Pay (visually prominent) */}
+        <Card className="p-6 bg-gradient-to-tr from-indigo-900/40 via-indigo-950/30 to-slate-900/90 border-indigo-500/30 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute right-0 bottom-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider">
+              Net Outflow
+            </span>
+            <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">
+          <div className="mt-4">
+            <span className="text-3xl font-black font-mono text-indigo-400">
               {formatCurrency(financialStats.totalNet)}
             </span>
-            <span className="text-[11px] text-slate-400">/ month</span>
-          </div>
-        </Card>
-
-        <Card className="p-4 bg-white/60 dark:bg-slate-900/60">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Gross Basic Pay</span>
-            <div className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              <CreditCard className="w-4 h-4" />
+            <div className="text-[11px] text-indigo-200 mt-1">
+              Disbursed net amount
             </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900 dark:text-white">
-              {formatCurrency(financialStats.totalBasic)}
-            </span>
-          </div>
-        </Card>
-
-        <Card className="p-4 bg-white/60 dark:bg-slate-900/60">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Total Allowances</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              +{formatCurrency(financialStats.totalAllowances)}
-            </span>
-            <span className="text-[11px] text-emerald-500 font-medium">bonuses & perks</span>
-          </div>
-        </Card>
-
-        <Card className="p-4 bg-white/60 dark:bg-slate-900/60">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Total Deductions</span>
-            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-              <TrendingUp className="w-4 h-4 rotate-180" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-rose-600 dark:text-rose-400">
-              -{formatCurrency(financialStats.totalDeductions)}
-            </span>
-            <span className="text-[11px] text-rose-400">tax & benefits</span>
           </div>
         </Card>
       </div>

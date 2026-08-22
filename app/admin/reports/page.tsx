@@ -703,6 +703,133 @@ export default function AdminReportsPage() {
             </div>
           </Card>
 
+          {/* Summary Cards Row */}
+          {!loading && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {reportType === 'attendance' && (
+                <>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Total Shift Logs</span>
+                    <p className="text-xl font-bold text-slate-200 mt-1 font-mono">{filteredReportData.length}</p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-semibold">Punctual Check-ins</span>
+                    <p className="text-xl font-bold text-emerald-400 mt-1 font-mono">
+                      {(filteredReportData as AttendanceWithEmp[]).filter(r => r.status === 'present').length}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-amber-500 uppercase tracking-wider font-semibold">Late Arrivals</span>
+                    <p className="text-xl font-bold text-amber-500 mt-1 font-mono">
+                      {(filteredReportData as AttendanceWithEmp[]).filter(r => r.status === 'late').length}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-indigo-950/20 border-indigo-500/20">
+                    <span className="text-[10px] text-indigo-300 uppercase tracking-wider font-semibold">Attendance Rate</span>
+                    <p className="text-xl font-bold text-indigo-300 mt-1 font-mono">
+                      {filteredReportData.length > 0 
+                        ? Math.round(((filteredReportData as AttendanceWithEmp[]).filter(r => r.status === 'present' || r.status === 'late').length / filteredReportData.length) * 100) 
+                        : 0}%
+                    </p>
+                  </Card>
+                </>
+              )}
+
+              {reportType === 'leave' && (
+                <>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Total Requests</span>
+                    <p className="text-xl font-bold text-slate-200 mt-1 font-mono">{filteredReportData.length}</p>
+                  </Card>
+                  <Card className="p-4 bg-emerald-950/20 border-emerald-500/20">
+                    <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-semibold">Approved Requests</span>
+                    <p className="text-xl font-bold text-emerald-400 mt-1 font-mono">
+                      {(filteredReportData as LeaveWithEmp[]).filter(r => r.status === 'approved').length}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-amber-950/20 border-amber-500/20">
+                    <span className="text-[10px] text-amber-500 uppercase tracking-wider font-semibold">Pending Approvals</span>
+                    <p className="text-xl font-bold text-amber-500 mt-1 font-mono">
+                      {(filteredReportData as LeaveWithEmp[]).filter(r => r.status === 'pending').length}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-indigo-400 uppercase tracking-wider font-semibold">Total Days Offline</span>
+                    <p className="text-xl font-bold text-indigo-400 mt-1 font-mono">
+                      {(filteredReportData as LeaveWithEmp[]).reduce((acc, r) => {
+                        const diff = new Date(r.end_date).getTime() - new Date(r.start_date).getTime();
+                        const days = Math.max(1, Math.ceil(diff / (1000 * 3600 * 24)) + 1);
+                        return acc + days;
+                      }, 0)} days
+                    </p>
+                  </Card>
+                </>
+              )}
+
+              {reportType === 'employees' && (
+                <>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Total Headcount</span>
+                    <p className="text-xl font-bold text-slate-200 mt-1 font-mono">{filteredReportData.length}</p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Operating Divisions</span>
+                    <p className="text-xl font-bold text-slate-200 mt-1 font-mono">
+                      {new Set((filteredReportData as Employee[]).map(r => r.department).filter(Boolean)).size}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-emerald-950/20 border-emerald-500/20">
+                    <span className="text-[10px] text-emerald-400 uppercase tracking-wider font-semibold">Average Salary</span>
+                    <p className="text-xl font-bold text-emerald-400 mt-1 font-mono">
+                      {filteredReportData.length > 0 
+                        ? formatCurrency(Math.round((filteredReportData as Employee[]).reduce((acc, r) => acc + (r.salary || 0), 0) / filteredReportData.length / 12)) 
+                        : '$0'}/mo
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-indigo-400 uppercase tracking-wider font-semibold">Highest Salary</span>
+                    <p className="text-xl font-bold text-indigo-400 mt-1 font-mono">
+                      {filteredReportData.length > 0 
+                        ? formatCurrency(Math.round(Math.max(...(filteredReportData as Employee[]).map(r => r.salary || 0)) / 12)) 
+                        : '$0'}/mo
+                    </p>
+                  </Card>
+                </>
+              )}
+
+              {reportType === 'payroll' && (
+                <>
+                  <Card className="p-4 bg-indigo-950/20 border-indigo-500/20">
+                    <span className="text-[10px] text-indigo-300 uppercase tracking-wider font-semibold">Net Salary Outflow</span>
+                    <p className="text-xl font-bold text-indigo-300 mt-1 font-mono">
+                      {formatCurrency((filteredReportData as PayrollWithEmp[]).reduce((acc, r) => acc + (r.net_salary || 0), 0))}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Average Net Pay</span>
+                    <p className="text-xl font-bold text-slate-200 mt-1 font-mono">
+                      {filteredReportData.length > 0 
+                        ? formatCurrency(Math.round((filteredReportData as PayrollWithEmp[]).reduce((acc, r) => acc + (r.net_salary || 0), 0) / filteredReportData.length)) 
+                        : '$0'}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Allowances</span>
+                    <p className="text-xl font-bold text-emerald-400 mt-1 font-mono">
+                      +{formatCurrency((filteredReportData as PayrollWithEmp[]).reduce((acc, r) => acc + (r.allowances || 0), 0))}
+                    </p>
+                  </Card>
+                  <Card className="p-4 bg-slate-950/40 border-slate-800">
+                    <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Deductions</span>
+                    <p className="text-xl font-bold text-rose-400 mt-1 font-mono">
+                      -{formatCurrency((filteredReportData as PayrollWithEmp[]).reduce((acc, r) => acc + (r.deductions || 0), 0))}
+                    </p>
+                  </Card>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Report Data Table */}
           <Card className="p-0 overflow-hidden">
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
