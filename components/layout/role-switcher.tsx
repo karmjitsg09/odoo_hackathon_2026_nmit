@@ -5,7 +5,7 @@ import { useApp } from '@/lib/store/app-context';
 import { ShieldCheck, UserCheck } from 'lucide-react';
 
 export function RoleSwitcher() {
-  const { currentRole, setRole, currentUser } = useApp();
+  const { currentRole, setRole } = useApp();
 
   return (
     <div className="flex items-center gap-2 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/60 shadow-inner">

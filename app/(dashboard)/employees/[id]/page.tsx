@@ -64,7 +64,7 @@ export default function EmployeeProfilePage({ params }: { params: Promise<{ id: 
     e.preventDefault();
 
     // Permission enforcement
-    const updates: any = {
+    const updates: Record<string, unknown> = {
       phone: editForm.phone,
       address: editForm.address,
       emergency_contact_name: editForm.emergency_contact_name,

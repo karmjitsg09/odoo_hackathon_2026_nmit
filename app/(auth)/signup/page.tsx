@@ -3,32 +3,29 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Sparkles, ShieldCheck, UserCheck, ArrowRight, Lock, Mail } from 'lucide-react';
+import { Sparkles, ArrowRight, Lock, Mail, User, Building } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [department, setDepartment] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     setTimeout(() => {
-      toast.success('Phase 1 Auth Placeholder: Redirecting to Employee Dashboard...');
+      toast.success('Phase 1 Registration Placeholder: Redirecting to Employee Dashboard...');
       setLoading(false);
       router.push('/employee/dashboard');
     }, 500);
-  };
-
-  const handleQuickDemo = (role: 'admin' | 'employee') => {
-    toast.success(`Navigating to ${role === 'admin' ? 'Admin / HR' : 'Employee'} Portal...`);
-    router.push(role === 'admin' ? '/admin/dashboard' : '/employee/dashboard');
   };
 
   return (
@@ -47,61 +44,48 @@ export default function LoginPage() {
             Dayflow HRMS
           </h1>
           <p className="text-sm text-slate-400">
-            Sign in to access your enterprise workspace
+            Create an employee or administrator account
           </p>
         </div>
 
-        {/* Quick Portal Switcher for Testing */}
-        <Card className="bg-indigo-950/40 border-indigo-500/30 p-4 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-300">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            Phase 1 Quick Portal Navigation
-          </div>
-          <p className="text-xs text-slate-300">
-            Explore the role-separated application shells:
-          </p>
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              onClick={() => handleQuickDemo('admin')}
-              className="bg-indigo-600 hover:bg-indigo-500 text-xs"
-            >
-              <ShieldCheck className="w-4 h-4" />
-              Admin Portal
-            </Button>
-            <Button
-              type="button"
-              variant="success"
-              size="sm"
-              onClick={() => handleQuickDemo('employee')}
-              className="text-xs"
-            >
-              <UserCheck className="w-4 h-4" />
-              Employee Portal
-            </Button>
-          </div>
-        </Card>
-
-        {/* Login Form Placeholder */}
+        {/* Signup Form */}
         <Card className="bg-slate-900/90 border-slate-800 p-6 shadow-2xl backdrop-blur-xl">
           <CardHeader className="p-0 pb-4">
-            <CardTitle className="text-lg">Account Login</CardTitle>
+            <CardTitle className="text-lg">Register Account</CardTitle>
             <CardDescription className="text-xs">
-              Supabase Auth will be wired by the Auth Developer in Phase 2
+              Supabase Auth user trigger will initialize your profile & employee record
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0 space-y-4">
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4">
               <Input
-                label="Email Address"
+                label="Full Name"
+                type="text"
+                required
+                placeholder="Eleanor Vance"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                leftIcon={<User className="w-4 h-4" />}
+              />
+
+              <Input
+                label="Work Email"
                 type="email"
                 required
-                placeholder="name@dayflow.hr"
+                placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 leftIcon={<Mail className="w-4 h-4" />}
+              />
+
+              <Input
+                label="Department"
+                type="text"
+                required
+                placeholder="Engineering / HR / Sales"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                leftIcon={<Building className="w-4 h-4" />}
               />
 
               <Input
@@ -121,15 +105,15 @@ export default function LoginPage() {
                 className="w-full mt-2 font-semibold"
                 disabled={loading}
               >
-                {loading ? 'Authenticating...' : 'Sign In'}
+                {loading ? 'Creating Account...' : 'Create Account'}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </form>
 
             <div className="text-center pt-2 text-xs text-slate-400">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-indigo-400 hover:underline font-semibold">
-                Sign Up
+              Already have an account?{' '}
+              <Link href="/login" className="text-indigo-400 hover:underline font-semibold">
+                Sign In
               </Link>
             </div>
           </CardContent>

@@ -157,7 +157,7 @@ export default function PayrollPage() {
                         {currentRole === 'admin' ? (
                           <select
                             value={pay.payment_status}
-                            onChange={(e) => updatePayrollStatus(pay.id, e.target.value as any)}
+                            onChange={(e) => updatePayrollStatus(pay.id, e.target.value as 'pending' | 'processed' | 'paid')}
                             className="px-2 py-1 text-[11px] rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-medium"
                           >
                             <option value="pending">Pending</option>

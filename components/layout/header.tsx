@@ -4,7 +4,7 @@ import React from 'react';
 import { useApp } from '@/lib/store/app-context';
 import { RoleSwitcher } from './role-switcher';
 import { NotificationDropdown } from './notification-dropdown';
-import { Menu, Sun, Moon, Search, LogOut } from 'lucide-react';
+import { Menu, Sun, Moon, Search } from 'lucide-react';
 import { Avatar } from '../ui/avatar';
 import Link from 'next/link';
 
